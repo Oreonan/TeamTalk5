@@ -1578,7 +1578,7 @@ TEST_CASE("Last voice packet - wav files")
 
         if (index == 0)
         {
-            ACE_OS::strcpy(fileToDelete, curdir);
+            ACE_OS::strncpy(fileToDelete, curdir, 1024);
             ACE_OS::strncat(fileToDelete, &delim, 1);
             ACE_OS::strncat(fileToDelete, dirInfo->d_name, ACE_OS::strlen(dirInfo->d_name));
             ACE_OS::unlink(fileToDelete);
@@ -1608,9 +1608,10 @@ TEST_CASE("Last voice packet - wav files")
         }
     } a(indev);
 
-    //run multiple times to get the wav output files with different number of frames.
-    //running 10 times, gives me 1-4 files with a missing frame, sometimes I get no file with a missing frame, but then you can run this test again or increase the number
-    //of runs from 10 to e.g. 20.
+    // run multiple times to get the wav output files with different number of frames.
+    // running 10 times, gives me 1-4 files with a missing frame, sometimes I get no
+    // file with a missing frame, but then you can run this test again or increase the
+    // number of runs from 10 to e.g. 20.
     for (int i = 0; i < 10; i++)
     {
         auto txclient = InitTeamTalk();
@@ -1705,7 +1706,7 @@ TEST_CASE("Last voice packet - wav files")
         ACE_TCHAR fileToCheck[1024]{};
         if (index == 0)
         {
-            ACE_OS::strcpy(fileToCheck, curdir);
+            ACE_OS::strncpy(fileToCheck, curdir, 1024);
             ACE_OS::strncat(fileToCheck, &delim, 1);
             ACE_OS::strncat(fileToCheck, dirInfo->d_name, ACE_OS::strlen(dirInfo->d_name));
 
@@ -3139,6 +3140,35 @@ TEST_CASE("MaxChannels")
     }
 }
 
+TEST_CASE("SeeFilesAfterMove")
+{
+    auto admin = InitTeamTalk();
+    REQUIRE(Connect(admin, ACE_TEXT("127.0.0.1"), 10333, 10333));
+    REQUIRE(Login(admin, ACE_TEXT("admin"), ACE_TEXT("admin"), ACE_TEXT("admin")));
+    REQUIRE(JoinRoot(admin));
+
+    auto ttclient = InitTeamTalk();
+    REQUIRE(Connect(ttclient, ACE_TEXT("127.0.0.1"), 10333, 10333));
+    REQUIRE(Login(ttclient, ACE_TEXT("guest"), ACE_TEXT("guest"), ACE_TEXT("guest")));
+    REQUIRE(JoinRoot(ttclient));
+
+    AudioCodec codec;
+    codec.nCodec = NO_CODEC;
+    auto chan = MakeChannel(admin, ACE_TEXT("SeeFilesAfterMove"), TT_GetRootChannelID(admin), codec);
+    chan.nMaxUsers = 100;
+    chan.nDiskQuota = 1024*1024;
+    REQUIRE(WaitForCmdSuccess(admin, TT_DoMakeChannel(admin, &chan)));
+
+    int chanid = TT_GetChannelIDFromPath(admin, ACE_TEXT("SeeFilesAfterMove"));
+    REQUIRE(chanid > 0);
+    REQUIRE(WaitForCmdSuccess(admin, TT_DoSendFile(admin, chanid, ACE_TEXT("testdata/Opus/giana.ogg"))));
+
+    REQUIRE(WaitForEvent(admin, CLIENTEVENT_CMD_FILE_NEW));
+
+    REQUIRE(WaitForCmdSuccess(admin, TT_DoMoveUser(admin, TT_GetMyUserID(ttclient), chanid)));
+
+    REQUIRE(WaitForEvent(ttclient, CLIENTEVENT_CMD_FILE_NEW));
+}
 
 #if defined(ENABLE_OPUSTOOLS) && defined(ENABLE_OPUS)
 
