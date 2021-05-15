@@ -109,8 +109,10 @@ import android.text.method.SingleLineTransformationMethod;
 import android.util.Log;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.view.LayoutInflater;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -124,6 +126,7 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView.OnEditorActionListener;
 import android.widget.ExpandableListView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -184,7 +187,7 @@ implements TeamTalkConnectionListener,
     SoundPool audioIcons;
     ComponentName mediaButtonEventReceiver;
     NotificationManager notificationManager;
-    WakeLock wakeLock;
+    WakeLock wakeLock, proximityWakeLock;
     boolean restarting;
     SensorManager mSensorManager;
     Sensor mSensor;
@@ -242,7 +245,9 @@ implements TeamTalkConnectionListener,
         mediaButtonEventReceiver = new ComponentName(getPackageName(), MediaButtonEventReceiver.class.getName());
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         wakeLock = ((PowerManager)getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG + ":TeamTalk5");
+         proximityWakeLock = ((PowerManager)getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, TAG + ":TeamTalk5");
         wakeLock.setReferenceCounted(false);
+        proximityWakeLock.setReferenceCounted(false);
 
         channelsAdapter = new ChannelListAdapter(this.getBaseContext());
         filesAdapter = new FileListAdapter(this, this, accessibilityAssistant);
@@ -583,10 +588,12 @@ implements TeamTalkConnectionListener,
         boolean proximity_sensor = prefs.getBoolean("proximity_sensor_checkbox", false);
         if (proximity_sensor && (mConnection != null) && mConnection.isBound() && !ttservice.isInPhoneCall()) {
             if (event.values[0] == 0) {
+                proximityWakeLock.acquire();
                 audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
                 audioManager.setSpeakerphoneOn(false);
                 ttservice.enableVoiceTransmission(true);
             } else {
+                proximityWakeLock.release();
                 adjustSoundSystem(prefs);
                 if (ttservice.isVoiceTransmissionEnabled())
                     ttservice.enableVoiceTransmission(false);
@@ -799,6 +806,7 @@ implements TeamTalkConnectionListener,
     public static class ChatSectionFragment extends Fragment {
         MainActivity mainActivity;
         
+private EditText newmsg;
         public ChatSectionFragment() {
         }
         
@@ -812,7 +820,16 @@ implements TeamTalkConnectionListener,
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             View rootView = inflater.inflate(R.layout.fragment_main_chat, container, false);
             mainActivity.accessibilityAssistant.registerPage(rootView, SectionsPagerAdapter.CHAT_PAGE);
-            final EditText newmsg = (EditText) rootView.findViewById(R.id.channel_im_edittext);
+            newmsg = (EditText) rootView.findViewById(R.id.channel_im_edittext);
+            newmsg.setOnEditorActionListener(new OnEditorActionListener() { 
+    public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+        if (actionId == EditorInfo.IME_ACTION_SEND || actionId == EditorInfo.IME_NULL) {
+            sendMsgToChannel();
+            return true;
+        }    
+        return false;
+    }
+});
             ListView chatlog = (ListView)rootView.findViewById(R.id.channel_im_listview);
             chatlog.setTranscriptMode(ListView.TRANSCRIPT_MODE_ALWAYS_SCROLL);
             chatlog.setAdapter(mainActivity.getTextMessagesAdapter());
@@ -821,27 +838,32 @@ implements TeamTalkConnectionListener,
             sendBtn.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View arg0) {
-                    String text = newmsg.getText().toString();
-                    if (text.isEmpty())
-                        return;
-                    
-                    TextMessage textmsg = new TextMessage();
-                    textmsg.nMsgType = TextMsgType.MSGTYPE_CHANNEL;
-                    textmsg.nChannelID = mainActivity.ttclient.getMyChannelID();
-                    textmsg.szMessage = text;
-                    int cmdid = mainActivity.ttclient.doTextMessage(textmsg);
-                    if(cmdid>0) {
-                        mainActivity.activecmds.put(cmdid, CmdComplete.CMD_COMPLETE_TEXTMSG);
-                        newmsg.setText("");
-                    }
-                    else {
-                        Toast.makeText(mainActivity, getResources().getString(R.string.text_con_cmderr),
-                            Toast.LENGTH_LONG).show();
-                    }
+                    sendMsgToChannel();
                 }
             });
             return rootView;
         }
+
+        private void sendMsgToChannel() {
+            String text = newmsg.getText().toString();
+            if (text.isEmpty())
+                return;
+                    
+            TextMessage textmsg = new TextMessage();
+            textmsg.nMsgType = TextMsgType.MSGTYPE_CHANNEL;
+            textmsg.nChannelID = mainActivity.ttclient.getMyChannelID();
+            textmsg.szMessage = text;
+            int cmdid = mainActivity.ttclient.doTextMessage(textmsg);
+            if(cmdid>0) {
+                mainActivity.activecmds.put(cmdid, CmdComplete.CMD_COMPLETE_TEXTMSG);
+                newmsg.setText("");
+            }
+            else {
+                Toast.makeText(mainActivity, getResources().getString(R.string.text_con_cmderr),
+                Toast.LENGTH_LONG).show();
+            }
+        }
+
     }
 
     public static class VidcapSectionFragment extends Fragment {
