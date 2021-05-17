@@ -1086,6 +1086,69 @@ TEST_CASE( "RawAudioMuxerOverflow" )
     }
 }
 
+TEST_CASE( "RawAudioMuxerSampleIndex" )
+{
+    teamtalk::AudioCodec ac;
+    ac.codec = teamtalk::CODEC_OPUS;
+    ac.opus.application = OPUS_APPLICATION_AUDIO;
+    ac.opus.bitrate = 48000;
+    ac.opus.complexity = 4;
+    ac.opus.dtx = ac.opus.fec = ac.opus.vbr = ac.opus.vbr_constraint = true;
+    ac.opus.channels = 2;
+    ac.opus.samplerate = 48000;
+    ac.opus.frame_size = int(ac.opus.samplerate * .01);
+    ac.opus.frames_per_packet = 1;
+    const int TOTALSAMPLES = teamtalk::GetAudioCodecCbTotalSamples(ac);
+    const int FRAMESIZE = teamtalk::GetAudioCodecCbSamples(ac);
+    const auto FMT = teamtalk::GetAudioCodecAudioFormat(ac);
+
+    msg_queue_t mixed_frames;
+    AudioMuxer muxer(teamtalk::STREAMTYPE_VOICE);
+    auto mixedfunc = [&] (teamtalk::StreamTypes sts, const media::AudioFrame& frm)
+    {
+        auto mb = AudioFrameToMsgBlock(frm);
+        REQUIRE(mixed_frames.enqueue(mb) >= 0);
+    };
+
+    REQUIRE(muxer.RegisterMuxCallback(ac, mixedfunc));
+
+    std::vector<short> buffer(TOTALSAMPLES, short(1));
+    media::AudioFrame frm(FMT, &buffer[0], FRAMESIZE);
+
+    REQUIRE(muxer.QueueUserAudio(16, teamtalk::STREAMTYPE_VOICE, frm));
+
+    ACE_Message_Block* mb = nullptr;
+    while (mixed_frames.dequeue(mb) >= 0)
+    {
+        MBGuard g(mb);
+        if (media::AudioFrame(mb).input_buffer[0] == 1)
+            break;
+    }
+
+    buffer.assign(buffer.size(), short(2));
+    frm.sample_no += FRAMESIZE * 2; // sample index mismatch
+
+    REQUIRE(muxer.QueueUserAudio(16, teamtalk::STREAMTYPE_VOICE, frm));
+    while (mixed_frames.dequeue(mb) >= 0)
+    {
+        MBGuard g(mb);
+        // audio frame (2) is lost
+        if (media::AudioFrame(mb).input_buffer[0] == 0)
+            break;
+    }
+
+    buffer.assign(buffer.size(), short(3));
+    frm.sample_no += FRAMESIZE * 3;
+
+    REQUIRE(muxer.QueueUserAudio(16, teamtalk::STREAMTYPE_VOICE, frm));
+    while (mixed_frames.dequeue(mb) >= 0)
+    {
+        MBGuard g(mb);
+        if (media::AudioFrame(mb).input_buffer[0] == 3)
+            break;
+    }
+}
+
 TEST_CASE( "MuxedStreamTypesInAudioBlock" )
 {
     auto txclient = InitTeamTalk();
@@ -1478,33 +1541,36 @@ TEST_CASE("testMuxedAudioBlockSoundInputDisabled")
     } while (n_blocks--);
 }
 
-#if defined(ENABLE_FFMPEG3) && 0
+#if defined(ENABLE_FFMPEG3)
 TEST_CASE("testThumbnail")
 {
     // ffmpeg -i in.mp3 -i teamtalk.png -map 0:0 -map 1:0 -c copy -id3v2_version 3 -metadata:s:v title="Album cover" -metadata:s:v comment="Cover (front)" out.mp3
-    FFMpegStreamer ffmpeg;
-    MediaStreamOutput prop(media::AudioFormat(16000, 2), 1600, media::FOURCC_RGB32);
-    auto filename = "out.mp3";
 
-    REQUIRE(ffmpeg.OpenFile(filename, prop));
+    auto filename = "testdata/mp3/thumbnail.mp3";
+    MediaFileProp mfp;
+    REQUIRE(GetMediaFileProp(filename, mfp));
+    REQUIRE(!mfp.video.IsValid());
+
+    MediaStreamOutput prop(media::AudioFormat(16000, 2), 1600, media::FOURCC_NONE);
+    FFMpegStreamer ffmpeg(filename, prop);
+
+    REQUIRE(ffmpeg.Open());
 
     std::promise<bool> done;
     auto sig_done = done.get_future();
 
     auto status = [&] (const MediaFileProp& mfp, MediaStreamStatus status) {
-                      std::cout << mfp.filename.c_str() << " status: " << (int)status << std::endl;
                       if (status == MEDIASTREAM_FINISHED)
                           done.set_value(true);
                   };
 
-    auto audio = [] (media::AudioFrame& audio_frame, ACE_Message_Block* mb_audio) {
+    auto audio = [] (media::AudioFrame& /*audio_frame*/, ACE_Message_Block* /*mb_audio*/) {
                      return false;
                  };
 
-    auto video = [] (media::VideoFrame& video_frame, ACE_Message_Block* mb_video) {
+    auto video = [] (media::VideoFrame& /*video_frame*/, ACE_Message_Block* /*mb_video*/) {
                     return false;
                 };
-
 
     ffmpeg.RegisterStatusCallback(status, true);
     ffmpeg.RegisterAudioCallback(audio, true);
@@ -1537,6 +1603,7 @@ TEST_CASE("testSSLSetup")
 }
 #endif
 
+#if 0 // this unit-test is too unstable under Valgrind
 TEST_CASE("Last voice packet - wav files")
 {
     TTCHAR curdir[1024] = {};
@@ -1724,6 +1791,7 @@ TEST_CASE("Last voice packet - wav files")
 
     ACE_OS::closedir(dir);
 }
+#endif
 
 TEST_CASE("NewVoiceStreamMatch")
 {
