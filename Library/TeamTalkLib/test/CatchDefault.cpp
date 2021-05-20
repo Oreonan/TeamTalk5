@@ -444,30 +444,17 @@ TEST_CASE( "MuxedAudioBlockVolume" )
     REQUIRE(TT_EnableVoiceTransmission(txclient, true));
 
     TTMessage msg;
-    auto gainfunc = [&] (int userid)
-    {
-        REQUIRE(WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK, msg));
-        auto ab = TT_AcquireUserAudioBlock(rxclient, STREAMTYPE_VOICE, userid);
-        REQUIRE(ab);
-        REQUIRE(ab->nChannels == 1);
-        short* audiobuf = reinterpret_cast<short*>(ab->lpRawAudio);
-        uint32_t sum_gain = 0;
-        for (int i=0;i<ab->nSamples;i++)
-            sum_gain += std::abs(audiobuf[i]);
-        REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
-        return sum_gain;
-    };
 
     // calc default volume level of muxed audio block
     REQUIRE((WaitForEvent(rxclient, CLIENTEVENT_USER_STATECHANGE, msg) && (msg.user.uUserState & USERSTATE_VOICE) == USERSTATE_VOICE));
     REQUIRE(TT_EnableAudioBlockEvent(rxclient, TT_MUXED_USERID, STREAMTYPE_VOICE, TRUE));
 
     uint32_t sum_nogain;
-    for (int i=0;i<2;++i)
-        sum_nogain = gainfunc(TT_MUXED_USERID);
+    sum_nogain = GetAudioBlockSamplesSum(rxclient, TT_MUXED_USERID, STREAMTYPE_VOICE);
 
     REQUIRE(TT_EnableAudioBlockEvent(rxclient, TT_MUXED_USERID, STREAMTYPE_VOICE, FALSE));
     WaitForEvent(rxclient, CLIENTEVENT_NONE, 0);
+    REQUIRE(TT_AcquireUserAudioBlock(rxclient,STREAMTYPE_VOICE, TT_MUXED_USERID) == nullptr);
 
     // double volume level of user
     User user;
@@ -480,7 +467,7 @@ TEST_CASE( "MuxedAudioBlockVolume" )
     uint32_t sum_gain;
     do
     {
-        sum_gain = gainfunc(TT_MUXED_USERID);
+        sum_gain = GetAudioBlockSamplesSum(rxclient, TT_MUXED_USERID, STREAMTYPE_VOICE);
     }
     while (sum_gain <= sum_nogain * 1.9 && retries);
 
@@ -500,7 +487,7 @@ TEST_CASE( "MuxedAudioBlockVolume" )
     retries = 5;
     do
     {
-        sum_gain = gainfunc(TT_MUXED_USERID);
+        sum_gain = GetAudioBlockSamplesSum(rxclient, TT_MUXED_USERID, STREAMTYPE_VOICE);
     }
     while (sum_gain <= sum_nogain * 1.9 && retries--);
 
@@ -516,7 +503,7 @@ TEST_CASE( "MuxedAudioBlockVolume" )
     REQUIRE(TT_EnableAudioBlockEvent(rxclient, txuserid, STREAMTYPE_VOICE, TRUE));
 
     for (int i=0;i<2;++i)
-        sum_nogain = gainfunc(txuserid);
+        sum_nogain = GetAudioBlockSamplesSum(rxclient, txuserid, STREAMTYPE_VOICE);
 
     REQUIRE(TT_EnableAudioBlockEvent(rxclient, txuserid, STREAMTYPE_VOICE, FALSE));
     WaitForEvent(rxclient, CLIENTEVENT_NONE, 0);
@@ -529,7 +516,7 @@ TEST_CASE( "MuxedAudioBlockVolume" )
     retries = 5;
     do
     {
-        sum_gain = gainfunc(txuserid);
+        sum_gain = GetAudioBlockSamplesSum(rxclient, txuserid, STREAMTYPE_VOICE);
     }
     while (sum_gain <= sum_nogain * 1.9 && retries--);
 
@@ -549,7 +536,7 @@ TEST_CASE( "MuxedAudioBlockVolume" )
     retries = 5;
     do
     {
-        sum_gain = gainfunc(txuserid);
+        sum_gain = GetAudioBlockSamplesSum(rxclient, txuserid, STREAMTYPE_VOICE);
     }
     while (sum_gain != 0 && retries--);
 
@@ -568,7 +555,7 @@ TEST_CASE( "MuxedAudioBlockVolume" )
     retries = 5;
     do
     {
-        sum_gain = gainfunc(txuserid);
+        sum_gain = GetAudioBlockSamplesSum(rxclient, txuserid, STREAMTYPE_VOICE);
     }
     while (sum_gain != 0 && retries--);
 
@@ -1183,34 +1170,24 @@ TEST_CASE( "MuxedStreamTypesInAudioBlock" )
 
     REQUIRE(TT_DBG_SetSoundInputTone(txclient, STREAMTYPE_VOICE, 800));
 
+    TTMessage msg;
+
+    REQUIRE(WaitForEvent(rxclient, CLIENTEVENT_LOCAL_MEDIAFILE, msg));
+    REQUIRE(msg.mediafileinfo.nStatus == MFS_STARTED);
+
     StreamTypes sts = STREAMTYPE_VOICE | STREAMTYPE_LOCALMEDIAPLAYBACK_AUDIO;
     REQUIRE(TT_EnableAudioBlockEvent(rxclient, TT_MUXED_USERID, sts, TRUE));
 
-    TTMessage msg;
-    auto gainfunc = [&] (int userid)
-    {
-        REQUIRE(WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK, msg));
-        REQUIRE(msg.nStreamType == sts);
-        auto ab = TT_AcquireUserAudioBlock(rxclient, sts, userid);
-        REQUIRE(ab);
-        REQUIRE(ab->nChannels == 1);
-        short* audiobuf = reinterpret_cast<short*>(ab->lpRawAudio);
-        uint32_t sum_gain = 0;
-        for (int i=0;i<ab->nSamples;i++)
-            sum_gain += std::abs(audiobuf[i]);
-        REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
-        return sum_gain;
-    };
-
     std::vector<int> premux, aftermux;
-    uint32_t sum_nomux = 0, sum_mux = 0;
-    int n_frames = 10;
-    while (n_frames--)
-    {
-        sum_nomux = gainfunc(TT_MUXED_USERID);
-        //std::cout << "No mux " << sum_nomux << std::endl;
-    }
+    uint32_t sum_mux_mf = 0, sum_mux_mf_voice = 0;
+    sum_mux_mf = GetAudioBlockSamplesSum(rxclient, TT_MUXED_USERID, sts);
 
+    REQUIRE(TT_EnableVoiceTransmission(txclient, true));
+
+    REQUIRE(WaitForEvent(rxclient, CLIENTEVENT_USER_STATECHANGE, msg));
+    REQUIRE((msg.user.uUserState & USERSTATE_VOICE) == USERSTATE_VOICE);
+
+    // drain
     while (WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK, msg, 0))
     {
         auto ab = TT_AcquireUserAudioBlock(rxclient, sts, TT_MUXED_USERID);
@@ -1218,15 +1195,14 @@ TEST_CASE( "MuxedStreamTypesInAudioBlock" )
         REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
     }
 
-    REQUIRE(TT_EnableVoiceTransmission(txclient, true));
-
-    n_frames = 10;
-    while (n_frames--)
+    int n_frames = 10;
+    do
     {
-        sum_mux = gainfunc(TT_MUXED_USERID);
-        //std::cout << "Level mux " << sum_mux << std::endl;
+        sum_mux_mf_voice = GetAudioBlockSamplesSum(rxclient, TT_MUXED_USERID, sts);
     }
-    REQUIRE(sum_mux > sum_nomux * 1.2);
+    while (sum_mux_mf_voice <= sum_mux_mf * 1.2 && --n_frames);
+
+    REQUIRE(sum_mux_mf_voice > sum_mux_mf * 1.2);
 }
 
 TEST_CASE( "MuxedStreamTypeRecording" )
@@ -2784,7 +2760,7 @@ TEST_CASE("LocalPlaybackEventOrder")
     mfp.audioPreprocessor.nPreprocessor = NO_AUDIOPREPROCESSOR;
     mfp.bPaused = FALSE;
     mfp.uOffsetMSec = TT_MEDIAPLAYBACK_OFFSET_IGNORE;
-    ttinst ttclient(TT_InitTeamTalkPoll());
+    auto ttclient = InitTeamTalk();
     REQUIRE(InitSound(ttclient));
 
     for (auto mfi : mfis)
@@ -2822,6 +2798,98 @@ TEST_CASE("LocalPlaybackEventOrder")
         REQUIRE(done);
         REQUIRE(started == 1);
     }
+}
+
+TEST_CASE("LocalPlaybackPerformance")
+{
+    const auto IN_SAMPLERATE = 48000;
+    const auto IN_CHANNELS = 2;
+    const auto IN_FRAMESIZE = int(IN_SAMPLERATE * .01);
+
+    MediaFileInfo mfi = {};
+    mfi.audioFmt.nAudioFmt = AFF_WAVE_FORMAT;
+    mfi.audioFmt.nChannels = IN_CHANNELS;
+    mfi.audioFmt.nSampleRate = IN_SAMPLERATE;
+    mfi.uDurationMSec = 100;
+    ACE_OS::strncpy(mfi.szFileName, ACE_TEXT("TTPlayOpusOgg.wav"), TT_STRLEN);
+    REQUIRE(TT_DBG_WriteAudioFileTone(&mfi, 500));
+
+    ttinst ttclient = InitTeamTalk();
+    REQUIRE(InitSound(ttclient));
+
+    MediaFilePlayback mfp = {};
+    mfp.audioPreprocessor.nPreprocessor = NO_AUDIOPREPROCESSOR;
+    mfp.bPaused = FALSE;
+    mfp.uOffsetMSec = TT_MEDIAPLAYBACK_OFFSET_IGNORE;
+
+    bool stop = false, started = false, paused = false;
+    TTMessage msg;
+    INT32 session;
+    uint32_t durationMSec = GETTIMESTAMP(), startupMSec = GETTIMESTAMP();
+
+    // test duration of OpusFileStreamer playback
+    session = TT_InitLocalPlayback(ttclient, mfi.szFileName, &mfp);
+    REQUIRE(session > 0);
+
+    while (!stop && WaitForEvent(ttclient, CLIENTEVENT_LOCAL_MEDIAFILE, msg, DEFWAIT))
+    {
+        switch (msg.mediafileinfo.nStatus)
+        {
+        case MFS_STARTED:
+            REQUIRE(msg.mediafileinfo.uElapsedMSec == 0);
+            REQUIRE(!started);
+            started = true;
+            std::cout << "Startup time: " << GETTIMESTAMP() - startupMSec << std::endl;
+            break;
+        case MFS_PLAYING:
+            break;
+        case MFS_FINISHED:
+            REQUIRE(!stop);
+            stop = true;
+            break;
+        default:
+            break;
+        }
+    }
+    REQUIRE(started);
+    REQUIRE(stop);
+    std::cout << "Duration time: " << GETTIMESTAMP() - durationMSec << std::endl;
+
+    started = stop = false;
+    mfp.bPaused = TRUE;
+    session = TT_InitLocalPlayback(ttclient, mfi.szFileName, &mfp);
+    REQUIRE(session > 0);
+    durationMSec = startupMSec = GETTIMESTAMP();
+    mfp.bPaused = FALSE;
+    REQUIRE(TT_UpdateLocalPlayback(ttclient, session, &mfp));
+
+    while (!stop && WaitForEvent(ttclient, CLIENTEVENT_LOCAL_MEDIAFILE, msg, DEFWAIT))
+    {
+        switch (msg.mediafileinfo.nStatus)
+        {
+        case MFS_PAUSED :
+            break;
+        case MFS_STARTED:
+            REQUIRE(msg.mediafileinfo.uElapsedMSec == 0);
+            REQUIRE(!started);
+            started = true;
+            std::cout << "Startup time: " << GETTIMESTAMP() - startupMSec << std::endl;
+            break;
+        case MFS_PLAYING:
+            break;
+        case MFS_FINISHED:
+            REQUIRE(!stop);
+            stop = true;
+            break;
+        default:
+            break;
+        }
+    }
+
+    REQUIRE(started);
+    REQUIRE(stop);
+    std::cout << "Duration time: " << GETTIMESTAMP() - durationMSec << std::endl;
+
 }
 
 #if TEAMTALK_KNOWN_BUGS
@@ -3518,7 +3586,7 @@ TEST_CASE("OPUSStreamer")
     auto audiofunc = [&](media::AudioFrame& audio_frame, ACE_Message_Block* /*mb_audio*/)
     {
         wavfile.AppendSamples(audio_frame.input_buffer, audio_frame.input_samples);
-        return true;
+        return false;
     };
 
     std::unique_lock<std::mutex> lck(mtx);
