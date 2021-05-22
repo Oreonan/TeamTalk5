@@ -1003,6 +1003,18 @@ void playSoundEvent(SoundEvent event)
     case SOUNDEVENT_MUTEALLOFF:
         filename = ttSettings->value(SETTINGS_SOUNDEVENT_MUTEALLOFF).toString();
         break;
+    case SOUNDEVENT_TRANSMITQUEUE_HEAD:
+        filename = ttSettings->value(SETTINGS_SOUNDEVENT_TRANSMITQUEUE_HEAD).toString();
+        break;
+    case SOUNDEVENT_TRANSMITQUEUE_STOP:
+        filename = ttSettings->value(SETTINGS_SOUNDEVENT_TRANSMITQUEUE_STOP).toString();
+        break;
+    case SOUNDEVENT_VOICEACTTRIG:
+        filename = ttSettings->value(SETTINGS_SOUNDEVENT_VOICEACTTRIG).toString();
+        break;
+    case SOUNDEVENT_VOICEACTSTOP:
+        filename = ttSettings->value(SETTINGS_SOUNDEVENT_VOICEACTSTOP).toString();
+        break;
     }
 
 #if QT_VERSION < QT_VERSION_CHECK(6,0,0)

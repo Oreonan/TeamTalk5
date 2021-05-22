@@ -1287,6 +1287,7 @@ void MainWindow::processTTMessage(const TTMessage& msg)
     break;
     case CLIENTEVENT_VOICE_ACTIVATION :
         Q_ASSERT(msg.ttType == __TTBOOL);
+        playSoundEvent(msg.bActive? SOUNDEVENT_VOICEACTTRIG :  SOUNDEVENT_VOICEACTSTOP);
         emit(updateMyself());
         break;
     case CLIENTEVENT_STREAM_MEDIAFILE :
@@ -5210,7 +5211,16 @@ void MainWindow::slotChannelUpdate(const Channel& chan)
     Channel oldchan;
     if(!ui.channelsWidget->getChannel(chan.nChannelID, oldchan))
         return;
-    
+
+    // Solo transmission
+    if(chan.transmitUsersQueue[0] == TT_GetMyUserID(ttInst) &&
+        oldchan.transmitUsersQueue[0] != TT_GetMyUserID(ttInst))
+        playSoundEvent(SOUNDEVENT_TRANSMITQUEUE_HEAD);
+
+    if(chan.transmitUsersQueue[0] != TT_GetMyUserID(ttInst) &&
+        oldchan.transmitUsersQueue[0] == TT_GetMyUserID(ttInst))
+        playSoundEvent(SOUNDEVENT_TRANSMITQUEUE_STOP);
+
     //specific to classroom channel
     QString msg;
     bool before = false, after = false;
