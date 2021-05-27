@@ -239,7 +239,7 @@ TEST_CASE( "Last voice packet" )
 }
 #endif
 
-TEST_CASE( "MuxedAudioToFile" )
+TEST_CASE( "AudioMuxerToFile" )
 {
     auto txclient = InitTeamTalk();
     auto rxclient = InitTeamTalk();
@@ -315,7 +315,7 @@ int GetAudioBlockSamplesSum(TTInstance* ttinst, int userid, StreamTypes sts)
     return sum_samples;
 };
 
-TEST_CASE( "MuxedAudioBlock" )
+TEST_CASE( "AudioMuxerSimple" )
 {
     auto txclient = InitTeamTalk();
     auto rxclient = InitTeamTalk();
@@ -343,7 +343,7 @@ TEST_CASE( "MuxedAudioBlock" )
     REQUIRE(WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK));
 }
 
-TEST_CASE( "MuxedAudioBlockNoInputDevice" )
+TEST_CASE( "AudioMuxerNoInputDevice" )
 {
     auto txclient = InitTeamTalk();
     auto rxclient = InitTeamTalk();
@@ -376,7 +376,7 @@ TEST_CASE( "MuxedAudioBlockNoInputDevice" )
     REQUIRE(retries > 0);
 }
 
-TEST_CASE( "MuxedAudioBlockUserEvent" )
+TEST_CASE( "AudioMuxerUserEvent" )
 {
     auto txclient = InitTeamTalk();
     auto rxclient = InitTeamTalk();
@@ -424,7 +424,7 @@ TEST_CASE( "MuxedAudioBlockUserEvent" )
     REQUIRE(WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK));
 }
 
-TEST_CASE( "MuxedAudioBlockVolume" )
+TEST_CASE( "AudioMuxerVolumeControl" )
 {
     auto txclient = InitTeamTalk();
     auto rxclient = InitTeamTalk();
@@ -563,7 +563,7 @@ TEST_CASE( "MuxedAudioBlockVolume" )
     REQUIRE(sum_gain == 0);
 }
 
-TEST_CASE( "RawAudioMuxerSameStreamTypeSameAudioFormat" )
+TEST_CASE( "AudioMuxerRawSameStreamTypeSameAudioFormat" )
 {
     teamtalk::AudioCodec ac;
     ac.codec = teamtalk::CODEC_OPUS;
@@ -606,11 +606,11 @@ TEST_CASE( "RawAudioMuxerSameStreamTypeSameAudioFormat" )
     for (size_t i=0;i<userids.size();++i)
     {
         media::AudioFrame frm(FMT, &user_bufs[i][0], ac.opus.frame_size, userids[i] * 1000);
-        frm.userdata = userids[i];
+        frm.streamid = userids[i];
         user_frames.push_back(frm);
     }
 
-    REQUIRE(muxer.QueueUserAudio(user_frames[0].userdata, teamtalk::STREAMTYPE_VOICE, user_frames[0]));
+    REQUIRE(muxer.QueueUserAudio(user_frames[0].streamid, teamtalk::STREAMTYPE_VOICE, user_frames[0]));
 
     // test mixing of single stream
     ACE_Message_Block* mb;
@@ -625,7 +625,7 @@ TEST_CASE( "RawAudioMuxerSameStreamTypeSameAudioFormat" )
     REQUIRE(mixed_frames.dequeue(mb, &tm) < 0);
 
     user_frames[0].sample_no += FRAMESIZE;
-    REQUIRE(muxer.QueueUserAudio(user_frames[0].userdata, teamtalk::STREAMTYPE_VOICE, user_frames[0]));
+    REQUIRE(muxer.QueueUserAudio(user_frames[0].streamid, teamtalk::STREAMTYPE_VOICE, user_frames[0]));
 
     REQUIRE(mixed_frames.dequeue(mb) >= 0);
     {
@@ -635,9 +635,9 @@ TEST_CASE( "RawAudioMuxerSameStreamTypeSameAudioFormat" )
     }
 
     // test mixing of two stream
-    REQUIRE(muxer.QueueUserAudio(user_frames[1].userdata, teamtalk::STREAMTYPE_VOICE, user_frames[1]));
+    REQUIRE(muxer.QueueUserAudio(user_frames[1].streamid, teamtalk::STREAMTYPE_VOICE, user_frames[1]));
     user_frames[0].sample_no += FRAMESIZE;
-    REQUIRE(muxer.QueueUserAudio(user_frames[0].userdata, teamtalk::STREAMTYPE_VOICE, user_frames[0]));
+    REQUIRE(muxer.QueueUserAudio(user_frames[0].streamid, teamtalk::STREAMTYPE_VOICE, user_frames[0]));
     REQUIRE(mixed_frames.dequeue(mb) >= 0);
     {
         MBGuard g(mb);
@@ -647,13 +647,13 @@ TEST_CASE( "RawAudioMuxerSameStreamTypeSameAudioFormat" )
     }
 
     user_frames[1].sample_no += FRAMESIZE;
-    REQUIRE(muxer.QueueUserAudio(user_frames[1].userdata, teamtalk::STREAMTYPE_VOICE, user_frames[1]));
+    REQUIRE(muxer.QueueUserAudio(user_frames[1].streamid, teamtalk::STREAMTYPE_VOICE, user_frames[1]));
 
     tm = ACE_OS::gettimeofday() + ToTimeValue(50);
     REQUIRE(mixed_frames.dequeue(mb, &tm) < 0);
 
     // terminate stream for #0
-    REQUIRE(muxer.QueueUserAudio(user_frames[0].userdata, teamtalk::STREAMTYPE_VOICE, media::AudioFrame()));
+    REQUIRE(muxer.QueueUserAudio(user_frames[0].streamid, teamtalk::STREAMTYPE_VOICE, media::AudioFrame()));
 
     REQUIRE(mixed_frames.dequeue(mb) >= 0);
     {
@@ -663,7 +663,7 @@ TEST_CASE( "RawAudioMuxerSameStreamTypeSameAudioFormat" )
     }
 
     // terminate stream for #1
-    REQUIRE(muxer.QueueUserAudio(user_frames[1].userdata, teamtalk::STREAMTYPE_VOICE, media::AudioFrame()));
+    REQUIRE(muxer.QueueUserAudio(user_frames[1].streamid, teamtalk::STREAMTYPE_VOICE, media::AudioFrame()));
 
     // expect silent mix
     REQUIRE(mixed_frames.dequeue(mb) >= 0);
@@ -676,7 +676,7 @@ TEST_CASE( "RawAudioMuxerSameStreamTypeSameAudioFormat" )
 
     // start new stream for #0
     user_frames[0].sample_no += FRAMESIZE;
-    REQUIRE(muxer.QueueUserAudio(user_frames[0].userdata, teamtalk::STREAMTYPE_VOICE, user_frames[0]));
+    REQUIRE(muxer.QueueUserAudio(user_frames[0].streamid, teamtalk::STREAMTYPE_VOICE, user_frames[0]));
 
     // wait for #0 audio to appear so it blocks further muxing
     while (mixed_frames.dequeue(mb) >= 0)
@@ -694,7 +694,7 @@ TEST_CASE( "RawAudioMuxerSameStreamTypeSameAudioFormat" )
         for (size_t i=0;i<userids.size();++i)
         {
             user_frames[i].sample_no += FRAMESIZE;
-            REQUIRE(muxer.QueueUserAudio(user_frames[i].userdata, teamtalk::STREAMTYPE_VOICE, user_frames[i]));
+            REQUIRE(muxer.QueueUserAudio(user_frames[i].streamid, teamtalk::STREAMTYPE_VOICE, user_frames[i]));
         }
     }
 
@@ -729,7 +729,7 @@ TEST_CASE( "RawAudioMuxerSameStreamTypeSameAudioFormat" )
         for (size_t i=0;i<userids.size();++i)
         {
             user_frames[i].sample_no += FRAMESIZE;
-            REQUIRE(muxer.QueueUserAudio(user_frames[i].userdata, teamtalk::STREAMTYPE_VOICE, user_frames[i]));
+            REQUIRE(muxer.QueueUserAudio(user_frames[i].streamid, teamtalk::STREAMTYPE_VOICE, user_frames[i]));
         }
     }
 
@@ -744,7 +744,7 @@ TEST_CASE( "RawAudioMuxerSameStreamTypeSameAudioFormat" )
     // terminate streams so we end up with silence
     for (size_t i=0;i<userids.size();++i)
     {
-        REQUIRE(muxer.QueueUserAudio(user_frames[i].userdata, teamtalk::STREAMTYPE_VOICE, media::AudioFrame()));
+        REQUIRE(muxer.QueueUserAudio(user_frames[i].streamid, teamtalk::STREAMTYPE_VOICE, media::AudioFrame()));
     }
 
     while (mixed_frames.dequeue(mb) >= 0)
@@ -874,7 +874,7 @@ TEST_CASE("BuildAudioFrame")
     REQUIRE(remainsamples == 77000 % 1554);
 }
 
-TEST_CASE( "RawAudioMuxerDifferentStreamTypeDifferentAudioFormat" )
+TEST_CASE( "AudioMuxerRawDifferentStreamTypeDifferentAudioFormat" )
 {
     teamtalk::AudioCodec ac;
     ac.codec = teamtalk::CODEC_OPUS;
@@ -935,7 +935,7 @@ TEST_CASE( "RawAudioMuxerDifferentStreamTypeDifferentAudioFormat" )
     for (size_t i=0;i<userids.size();++i)
     {
         media::AudioFrame frm(user_fmts[i], &user_bufs[i][0], user_bufs[i].size() / user_fmts[i].channels, user_bufs[i].size() * 1000);
-        frm.userdata = userids[i];
+        frm.streamid = userids[i];
         user_frames.push_back(frm);
     }
 
@@ -981,7 +981,7 @@ TEST_CASE( "RawAudioMuxerDifferentStreamTypeDifferentAudioFormat" )
     REQUIRE(mixed_frames.message_count() == 0);
 }
 
-TEST_CASE( "RawAudioMuxerOverflow" )
+TEST_CASE( "AudioMuxerRawOverflow" )
 {
     teamtalk::AudioCodec ac;
     ac.codec = teamtalk::CODEC_OPUS;
@@ -1073,7 +1073,7 @@ TEST_CASE( "RawAudioMuxerOverflow" )
     }
 }
 
-TEST_CASE( "RawAudioMuxerSampleIndex" )
+TEST_CASE( "AudioMuxerRawSampleIndex" )
 {
     teamtalk::AudioCodec ac;
     ac.codec = teamtalk::CODEC_OPUS;
@@ -1089,14 +1089,27 @@ TEST_CASE( "RawAudioMuxerSampleIndex" )
     const int FRAMESIZE = teamtalk::GetAudioCodecCbSamples(ac);
     const auto FMT = teamtalk::GetAudioCodecAudioFormat(ac);
 
-    msg_queue_t mixed_frames;
+    ACE_Time_Value zero;
+    msg_queue_t mixed_frames, mixed_ticker;
+    auto QSIZE = 1024*1024*10;
+    mixed_frames.high_water_mark(QSIZE);
+    mixed_frames.low_water_mark(QSIZE);
+    mixed_ticker.high_water_mark(QSIZE);
+    mixed_ticker.low_water_mark(QSIZE);
     AudioMuxer muxer(teamtalk::STREAMTYPE_VOICE);
     auto mixedfunc = [&] (teamtalk::StreamTypes sts, const media::AudioFrame& frm)
     {
         auto mb = AudioFrameToMsgBlock(frm);
-        REQUIRE(mixed_frames.enqueue(mb) >= 0);
+        REQUIRE(mixed_frames.enqueue(mb, &zero) >= 0);
+    };
+    auto tickfunc = [&] (teamtalk::StreamTypes sts, uint32_t sample_no)
+    {
+        media::AudioFrame tickfrm;
+        tickfrm.sample_no = sample_no;
+        REQUIRE(mixed_ticker.enqueue(AudioFrameToMsgBlock(tickfrm), &zero) >= 0);
     };
 
+    muxer.RegisterMuxTick(tickfunc);
     REQUIRE(muxer.RegisterMuxCallback(ac, mixedfunc));
 
     std::vector<short> buffer(TOTALSAMPLES, short(1));
@@ -1136,7 +1149,7 @@ TEST_CASE( "RawAudioMuxerSampleIndex" )
     }
 }
 
-TEST_CASE( "MuxedStreamTypesInAudioBlock" )
+TEST_CASE( "AudioMuxerStreamTypesIntoAudioBlock" )
 {
     auto txclient = InitTeamTalk();
     auto rxclient = InitTeamTalk();
@@ -1205,7 +1218,7 @@ TEST_CASE( "MuxedStreamTypesInAudioBlock" )
     REQUIRE(sum_mux_mf_voice > sum_mux_mf * 1.2);
 }
 
-TEST_CASE( "MuxedStreamTypeRecording" )
+TEST_CASE( "AudioMuxerStreamTypeRecording" )
 {
     auto rxclient = InitTeamTalk();
 
@@ -1326,6 +1339,288 @@ TEST_CASE( "MuxedStreamTypeRecording" )
     while (msg.mediafileinfo.uElapsedMSec < msg.mediafileinfo.uDurationMSec / 2);
 
     REQUIRE(TT_StopRecordingMuxedAudioFile(rxclient));
+}
+
+TEST_CASE( "AudioMuxerAllStreamTypesIntoAudioBlock")
+{
+    AudioBlock* ab;
+    StreamTypes sts;
+    INT32 session;
+
+    MediaFileInfo mfi = {};
+    mfi.audioFmt.nAudioFmt = AFF_WAVE_FORMAT;
+    mfi.audioFmt.nChannels = 2;
+    mfi.audioFmt.nSampleRate = 44100;
+    mfi.uDurationMSec = 60000;
+    ACE_OS::strncpy(mfi.szFileName, ACE_TEXT("myfile.wav"), TT_STRLEN);
+    REQUIRE(TT_DBG_WriteAudioFileTone(&mfi, 500));
+
+    MediaFilePlayback mfp = {};
+    mfp.audioPreprocessor.nPreprocessor = NO_AUDIOPREPROCESSOR;
+    mfp.bPaused = FALSE;
+    mfp.uOffsetMSec = TT_MEDIAPLAYBACK_OFFSET_IGNORE;
+
+    auto rxclient = InitTeamTalk();
+    REQUIRE(InitSound(rxclient));
+    REQUIRE(Connect(rxclient, ACE_TEXT("127.0.0.1"), 10333, 10333));
+    REQUIRE(Login(rxclient, ACE_TEXT("RxClient"), ACE_TEXT("guest"), ACE_TEXT("guest")));
+    REQUIRE(JoinRoot(rxclient));
+    auto rxuserid = TT_GetMyUserID(rxclient);
+
+    auto txclient = InitTeamTalk();
+    REQUIRE(InitSound(txclient));
+    REQUIRE(Connect(txclient, ACE_TEXT("127.0.0.1"), 10333, 10333));
+    REQUIRE(Login(txclient, ACE_TEXT("TxClient"), ACE_TEXT("guest"), ACE_TEXT("guest")));
+    REQUIRE(JoinRoot(txclient));
+    auto txuserid = TT_GetMyUserID(txclient);
+
+    // test STREAMTYPE_VOICE from TT_LOCAL_USERID
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, TT_LOCAL_USERID, STREAMTYPE_VOICE, TRUE));
+    REQUIRE(WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK));
+    ab = TT_AcquireUserAudioBlock(rxclient, STREAMTYPE_VOICE, TT_LOCAL_USERID);
+    REQUIRE(ab);
+    REQUIRE(ab->uStreamTypes == STREAMTYPE_VOICE);
+    REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, TT_LOCAL_USERID, STREAMTYPE_VOICE, FALSE));
+    WaitForEvent(rxclient, CLIENTEVENT_NONE, 0);
+
+    // test STREAMTYPE_VOICE from TT_LOCAL_TX_USERID
+    REQUIRE(TT_EnableVoiceTransmission(rxclient, TRUE));
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, TT_LOCAL_TX_USERID, STREAMTYPE_VOICE, TRUE));
+    REQUIRE(WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK));
+    ab = TT_AcquireUserAudioBlock(rxclient, STREAMTYPE_VOICE, TT_LOCAL_TX_USERID);
+    REQUIRE(ab);
+    REQUIRE(ab->uStreamTypes == STREAMTYPE_VOICE);
+    REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, TT_LOCAL_TX_USERID, STREAMTYPE_VOICE, FALSE));
+    REQUIRE(TT_EnableVoiceTransmission(rxclient, FALSE));
+    WaitForEvent(rxclient, CLIENTEVENT_NONE, 0);
+
+    // test STREAMTYPE_VOICE from remote user
+    REQUIRE(TT_EnableVoiceTransmission(txclient, TRUE));
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, txuserid, STREAMTYPE_VOICE, TRUE));
+    REQUIRE(WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK));
+    ab = TT_AcquireUserAudioBlock(rxclient, STREAMTYPE_VOICE, txuserid);
+    REQUIRE(ab);
+    REQUIRE(ab->uStreamTypes == STREAMTYPE_VOICE);
+    REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, txuserid, STREAMTYPE_VOICE, FALSE));
+    REQUIRE(TT_EnableVoiceTransmission(txclient, FALSE));
+    WaitForEvent(rxclient, CLIENTEVENT_NONE, 0);
+
+    // test STREAMTYPE_MEDIAFILE_AUDIO from remote user
+    AudioFormat af;
+    af.nAudioFmt = AFF_WAVE_FORMAT;
+    af.nChannels = 1;
+    af.nSampleRate = 12000;
+    REQUIRE(TT_StartStreamingMediaFileToChannel(txclient, mfi.szFileName, nullptr));
+    REQUIRE(TT_EnableAudioBlockEventEx(rxclient, txuserid, STREAMTYPE_MEDIAFILE_AUDIO, &af, TRUE));
+    REQUIRE(WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK));
+    ab = TT_AcquireUserAudioBlock(rxclient, STREAMTYPE_MEDIAFILE_AUDIO, txuserid);
+    REQUIRE(ab);
+    REQUIRE(ab->uStreamTypes == STREAMTYPE_MEDIAFILE_AUDIO);
+    REQUIRE(TT_StopStreamingMediaFileToChannel(txclient));
+    REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, txuserid, STREAMTYPE_MEDIAFILE_AUDIO, FALSE));
+    WaitForEvent(rxclient, CLIENTEVENT_NONE, 0);
+
+    // test STREAMTYPE_LOCALMEDIAPLAYBACK_AUDIO
+    session = TT_InitLocalPlayback(rxclient, mfi.szFileName, &mfp);
+    REQUIRE(session > 0);
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, session, STREAMTYPE_LOCALMEDIAPLAYBACK_AUDIO, TRUE));
+    REQUIRE(WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK));
+    ab = TT_AcquireUserAudioBlock(rxclient, STREAMTYPE_LOCALMEDIAPLAYBACK_AUDIO, session);
+    REQUIRE(ab);
+    REQUIRE(ab->uStreamTypes == STREAMTYPE_LOCALMEDIAPLAYBACK_AUDIO);
+    REQUIRE(TT_StopLocalPlayback(rxclient, session));
+    REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, session, STREAMTYPE_LOCALMEDIAPLAYBACK_AUDIO, FALSE));
+    WaitForEvent(rxclient, CLIENTEVENT_NONE, 0);
+
+    // clear audio encoder queue
+    REQUIRE(WaitForCmdSuccess(rxclient, TT_DoLeaveChannel(rxclient)));
+    REQUIRE(WaitForCmdSuccess(txclient, TT_DoLeaveChannel(txclient)));
+    REQUIRE(JoinRoot(rxclient));
+    REQUIRE(JoinRoot(txclient));
+
+    // test mixing of STREAMTYPE_VOICE | STREAMTYPE_MEDIAFILE_AUDIO | STREAMTYPE_LOCALMEDIAPLAYBACK_AUDIO
+    sts = STREAMTYPE_VOICE | STREAMTYPE_MEDIAFILE_AUDIO | STREAMTYPE_LOCALMEDIAPLAYBACK_AUDIO;
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, TT_MUXED_USERID, sts, TRUE));
+    for (int i=0;i<3;++i)
+    {
+        REQUIRE(WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK));
+        ab = TT_AcquireUserAudioBlock(rxclient, sts, TT_MUXED_USERID);
+        REQUIRE(ab);
+        REQUIRE(ab->uStreamTypes == STREAMTYPE_NONE);
+        REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+    }
+    REQUIRE(TT_EnableVoiceTransmission(txclient, TRUE));
+    int n_frames = 1000;
+    while (n_frames-- && WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK))
+    {
+        ab = TT_AcquireUserAudioBlock(rxclient, sts, TT_MUXED_USERID);
+        REQUIRE(ab);
+        if (ab->uStreamTypes == STREAMTYPE_VOICE)
+            break;
+        REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+        ab = nullptr;
+    }
+    REQUIRE(ab);
+    REQUIRE(ab->uStreamTypes == STREAMTYPE_VOICE);
+    REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+    REQUIRE(TT_StartStreamingMediaFileToChannel(txclient, mfi.szFileName, nullptr));
+    n_frames = 1000;
+    while (n_frames-- && WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK))
+    {
+        ab = TT_AcquireUserAudioBlock(rxclient, sts, TT_MUXED_USERID);
+        REQUIRE(ab);
+        if (ab->uStreamTypes == (STREAMTYPE_VOICE | STREAMTYPE_MEDIAFILE_AUDIO))
+            break;
+        REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+        ab = nullptr;
+    }
+    REQUIRE(ab);
+    REQUIRE(ab->uStreamTypes == (STREAMTYPE_VOICE | STREAMTYPE_MEDIAFILE_AUDIO));
+    REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+    session = TT_InitLocalPlayback(rxclient, mfi.szFileName, &mfp);
+    REQUIRE(session > 0);
+    n_frames = 1000;
+    while (n_frames-- && WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK))
+    {
+        ab = TT_AcquireUserAudioBlock(rxclient, sts, TT_MUXED_USERID);
+        REQUIRE(ab);
+        if (ab->uStreamTypes == (STREAMTYPE_VOICE | STREAMTYPE_MEDIAFILE_AUDIO | STREAMTYPE_LOCALMEDIAPLAYBACK_AUDIO))
+            break;
+        REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+        ab = nullptr;
+    }
+    REQUIRE(ab);
+    REQUIRE(ab->uStreamTypes == (STREAMTYPE_VOICE | STREAMTYPE_MEDIAFILE_AUDIO | STREAMTYPE_LOCALMEDIAPLAYBACK_AUDIO));
+    REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+    REQUIRE(TT_EnableVoiceTransmission(txclient, FALSE));
+    REQUIRE(TT_StopStreamingMediaFileToChannel(txclient));
+    REQUIRE(TT_StopLocalPlayback(rxclient, session));
+    n_frames = 1000;
+    while (n_frames-- && WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK))
+    {
+        ab = TT_AcquireUserAudioBlock(rxclient, sts, TT_MUXED_USERID);
+        REQUIRE(ab);
+        if (ab->uStreamTypes == (STREAMTYPE_NONE))
+            break;
+        REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+        ab = nullptr;
+    }
+    REQUIRE(ab);
+    REQUIRE(ab->uStreamTypes == (STREAMTYPE_NONE));
+    REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+}
+
+TEST_CASE("AudioMuxerStreamRestart")
+{
+    auto rxclient = InitTeamTalk();
+    REQUIRE(InitSound(rxclient));
+    REQUIRE(Connect(rxclient, ACE_TEXT("127.0.0.1"), 10333, 10333));
+    REQUIRE(Login(rxclient, ACE_TEXT("RxClient"), ACE_TEXT("guest"), ACE_TEXT("guest")));
+    REQUIRE(JoinRoot(rxclient));
+    auto rxuserid = TT_GetMyUserID(rxclient);
+
+    auto txclient = InitTeamTalk();
+    REQUIRE(InitSound(txclient));
+    REQUIRE(Connect(txclient, ACE_TEXT("127.0.0.1"), 10333, 10333));
+    REQUIRE(Login(txclient, ACE_TEXT("TxClient"), ACE_TEXT("guest"), ACE_TEXT("guest")));
+    REQUIRE(JoinRoot(txclient));
+    auto txuserid = TT_GetMyUserID(txclient);
+
+    AudioBlock* ab;
+    int n_frames;
+
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, TT_MUXED_USERID, STREAMTYPE_VOICE, TRUE));
+
+    for (int i=0;i<3;++i)
+    {
+        REQUIRE(TT_EnableVoiceTransmission(txclient, TRUE));
+
+        n_frames = 50;
+        while (n_frames-- && WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK))
+        {
+            ab = TT_AcquireUserAudioBlock(rxclient, STREAMTYPE_VOICE, TT_MUXED_USERID);
+            REQUIRE(ab);
+            if (ab->uStreamTypes == STREAMTYPE_VOICE)
+                break;
+            REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+            ab = nullptr;
+        }
+        REQUIRE(ab);
+        REQUIRE(ab->uStreamTypes == STREAMTYPE_VOICE);
+        REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+
+        REQUIRE(TT_EnableVoiceTransmission(txclient, FALSE));
+
+        n_frames = 50;
+        while (n_frames-- && WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK))
+        {
+            ab = TT_AcquireUserAudioBlock(rxclient, STREAMTYPE_VOICE, TT_MUXED_USERID);
+            REQUIRE(ab);
+            if (ab->uStreamTypes == STREAMTYPE_NONE)
+                break;
+            REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+            ab = nullptr;
+        }
+        REQUIRE(ab);
+        REQUIRE(ab->uStreamTypes == STREAMTYPE_NONE);
+        REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+
+        REQUIRE(WaitForCmdSuccess(rxclient, TT_DoLeaveChannel(rxclient)));
+
+        REQUIRE(JoinRoot(rxclient));
+    }
+
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, TT_MUXED_USERID, STREAMTYPE_VOICE, FALSE));
+
+    MediaFileInfo mfi = {};
+    mfi.audioFmt.nAudioFmt = AFF_WAVE_FORMAT;
+    mfi.audioFmt.nChannels = 2;
+    mfi.audioFmt.nSampleRate = 44100;
+    mfi.uDurationMSec = 60000;
+    ACE_OS::strncpy(mfi.szFileName, ACE_TEXT("myfile.wav"), TT_STRLEN);
+    REQUIRE(TT_DBG_WriteAudioFileTone(&mfi, 500));
+
+    REQUIRE(TT_EnableAudioBlockEvent(rxclient, TT_MUXED_USERID, STREAMTYPE_MEDIAFILE_AUDIO, TRUE));
+
+    for (int i=0;i<3;++i)
+    {
+        REQUIRE(TT_StartStreamingMediaFileToChannel(txclient, mfi.szFileName, nullptr));
+
+        n_frames = 50;
+        while (n_frames-- && WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK))
+        {
+            ab = TT_AcquireUserAudioBlock(rxclient, STREAMTYPE_MEDIAFILE_AUDIO, TT_MUXED_USERID);
+            REQUIRE(ab);
+            if (ab->uStreamTypes == STREAMTYPE_MEDIAFILE_AUDIO)
+                break;
+            REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+            ab = nullptr;
+        }
+        REQUIRE(ab);
+        REQUIRE(ab->uStreamTypes == STREAMTYPE_MEDIAFILE_AUDIO);
+        REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+
+        REQUIRE(TT_StopStreamingMediaFileToChannel(txclient));
+
+        n_frames = 50;
+        while (n_frames-- && WaitForEvent(rxclient, CLIENTEVENT_USER_AUDIOBLOCK))
+        {
+            ab = TT_AcquireUserAudioBlock(rxclient, STREAMTYPE_MEDIAFILE_AUDIO, TT_MUXED_USERID);
+            REQUIRE(ab);
+            if (ab->uStreamTypes == STREAMTYPE_NONE)
+                break;
+            REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+            ab = nullptr;
+        }
+        REQUIRE(ab);
+        REQUIRE(ab->uStreamTypes == STREAMTYPE_NONE);
+        REQUIRE(TT_ReleaseUserAudioBlock(rxclient, ab));
+    }
 }
 
 #if defined(ENABLE_OGG)
@@ -1492,7 +1787,7 @@ TEST_CASE("TT_AEC")
 }
 #endif
 
-TEST_CASE("testMuxedAudioBlockSoundInputDisabled")
+TEST_CASE("AudioMuxerSoundInputDisabled")
 {
     auto ttclient = InitTeamTalk();
 
@@ -3100,6 +3395,39 @@ TEST_CASE("LocalPlaybackToAudioBlock")
 
     REQUIRE(TT_InitLocalPlayback(txclient, mfi.szFileName, &mfp) > 0);
     REQUIRE(TT_InitLocalPlayback(txclient, mfi.szFileName, &mfp) > 0);
+}
+
+TEST_CASE("LocalPlaybackDisconnect")
+{
+    auto txclient = InitTeamTalk();
+    REQUIRE(InitSound(txclient));
+    REQUIRE(Connect(txclient, ACE_TEXT("127.0.0.1"), 10333, 10333));
+    REQUIRE(Login(txclient, ACE_TEXT("TxClient"), ACE_TEXT("guest"), ACE_TEXT("guest")));
+    REQUIRE(JoinRoot(txclient));
+
+    MediaFileInfo mfi = {};
+    mfi.audioFmt.nAudioFmt = AFF_WAVE_FORMAT;
+    mfi.audioFmt.nChannels = 2;
+    mfi.audioFmt.nSampleRate = 48000;
+    mfi.uDurationMSec = 1000;
+    ACE_OS::strncpy(mfi.szFileName, ACE_TEXT("playbackfile.wav"), TT_STRLEN);
+    REQUIRE(TT_DBG_WriteAudioFileTone(&mfi, 500));
+
+    MediaFilePlayback mfp = {};
+    mfp.bPaused = FALSE;
+    mfp.uOffsetMSec = TT_MEDIAPLAYBACK_OFFSET_IGNORE;
+    auto sessionid = TT_InitLocalPlayback(txclient, mfi.szFileName, &mfp);
+    REQUIRE(sessionid > 0);
+
+    TTMessage msg;
+    REQUIRE(WaitForEvent(txclient, CLIENTEVENT_LOCAL_MEDIAFILE, msg));
+    REQUIRE(msg.mediafileinfo.nStatus == MFS_STARTED);
+    REQUIRE(WaitForEvent(txclient, CLIENTEVENT_LOCAL_MEDIAFILE, msg));
+    REQUIRE(msg.mediafileinfo.nStatus == MFS_PLAYING);
+    REQUIRE(TT_Disconnect(txclient));
+
+    while (WaitForEvent(txclient, CLIENTEVENT_LOCAL_MEDIAFILE, msg) && msg.mediafileinfo.nStatus == MFS_PLAYING);
+    REQUIRE(msg.mediafileinfo.nStatus == MFS_FINISHED);
 }
 
 TEST_CASE("FirstVoiceStreamPacket")

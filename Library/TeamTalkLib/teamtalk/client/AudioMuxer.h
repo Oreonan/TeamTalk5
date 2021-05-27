@@ -87,8 +87,8 @@ private:
     void ProcessAudioQueues(bool flush);
     bool CanMuxUserAudio();
     void RemoveEmptyMuxUsers(); // should only be used during flush
-    bool MuxUserAudio();
-    void WriteAudio(int cb_samples);
+    teamtalk::StreamTypes MuxUserAudio();
+    void WriteAudio(int cb_samples, teamtalk::StreamTypes sts);
     bool FileActive();
 
     typedef std::shared_ptr< ACE_Message_Queue<ACE_MT_SYNCH> > message_queue_t;
@@ -100,7 +100,7 @@ private:
 
     // preprocess queue (audio that cannot yet to into 'm_usermux_queue')
     AudioContainer m_preprocess_queue;
-    std::recursive_mutex m_preprocess_mutex;
+    std::recursive_mutex m_mutex1_preprocess;
     // key -> media::AudioFrame. Audio block storing the remainder of 'm_preprocess_queue'
     std::map<int, ACE_Message_Block*> m_preprocess_block;
 
@@ -114,7 +114,7 @@ private:
 
     ACE_Reactor m_reactor;
     ACE_Time_Value m_mux_interval;
-    std::recursive_mutex m_mux_mutex;
+    std::recursive_mutex m_mutex2_mux;
     std::shared_ptr< std::thread > m_thread;
 
     uint32_t m_sample_no = 0;
