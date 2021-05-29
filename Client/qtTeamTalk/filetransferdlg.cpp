@@ -110,7 +110,7 @@ void FileTransferDlg::updateFileTransfer(const FileTransfer& transfer)
     }
     ui.throughputLabel->setText(tr("%1 KBytes/second, last second %2 bytes")
                                 .arg(throughput).arg(diff));
-    ui.throughputLabel->setAccessibleName(QString("%1").arg(ui.label_3->text()) + tr("%1 KBytes/second, last second %2 bytes").arg(throughput).arg(diff));
+    ui.throughputLabel->setAccessibleName(QString(tr("%1 %2 KBytes/second, last second %3 bytes").arg(ui.label_3->text()).arg(throughput).arg(diff)));
 
     if(transfer.bInbound)
     {
