@@ -108,9 +108,9 @@ void FileTransferDlg::updateFileTransfer(const FileTransfer& transfer)
         throughput = transfer.nTransferred / elapsed;
         throughput /= 1024.0;
     }
-    ui.throughputLabel->setText(tr("%1 KBytes/second, last second %2 bytes")
-                                .arg(throughput).arg(diff));
-    ui.throughputLabel->setAccessibleName(QString(tr("%1 %2 KBytes/second, last second %3 bytes").arg(ui.label_3->text()).arg(throughput).arg(diff)));
+    QString lt = QString(tr("%1 KBytes/second, last second %2 bytes").arg(throughput).arg(diff));
+    ui.throughputLabel->setText(lt);
+    ui.throughputLabel->setAccessibleName(QString("%1 %2").arg(ui.label_3->text()).arg(lt));
 
     if(transfer.bInbound)
     {
