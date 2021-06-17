@@ -149,45 +149,49 @@ void StreamMediaFileDlg::slotSelectFile()
 
 void StreamMediaFileDlg::slotDeleteFromHistory()
 {
-    int j = ui.mediafileComboBox->currentIndex();
-    QVector<QString> files;
-    for (int i=0;i<ui.mediafileComboBox->count();i++)
+    ui.mediafileComboBox->removeItem(ui.mediafileComboBox->currentIndex());
+    for (int i = 0; i<ttSettings->value(QString(SETTINGS_STREAMMEDIA_FILENAME).arg(i)).toString().size(); i++)
     {
-        files.push_back(ui.mediafileComboBox->itemText(i));
+        ttSettings->remove(QString(SETTINGS_STREAMMEDIA_FILENAME).arg(i));
     }
-    ttSettings->remove(QString(SETTINGS_STREAMMEDIA_FILENAME).arg(j));
+    for (int i = 0; i<ui.mediafileComboBox->count(); i++)
+    {
+        ttSettings->remove(QString(SETTINGS_STREAMMEDIA_FILENAME).arg(i));
+    }
+    QVector<QString> files;
+    for (int j = 0; j<ui.mediafileComboBox->count(); j++)
+    {
+        files.push_back(ui.mediafileComboBox->itemText(j));
+    }
     QString filename = ui.mediafileComboBox->lineEdit()->text();
     files.removeAll(filename);
     files.push_front(filename);
     if (files.size() > MAX_MEDIAFILES)
         files.resize(MAX_MEDIAFILES);
-
-    for (int i = 0; i < files.size(); i++)
+    for (int k = 0; k < files.size(); k++)
     {
-        ttSettings->setValue(QString(SETTINGS_STREAMMEDIA_FILENAME).arg(i-1), files[i]);
+        ttSettings->setValue(QString(SETTINGS_STREAMMEDIA_FILENAME).arg(k), files[k]);
     }
-    ui.mediafileComboBox->clear();
-    int i = 0;
-    QString item;
-    while ((item = ttSettings->value(QString(SETTINGS_STREAMMEDIA_FILENAME).arg(i++)).toString()).size())
-    {
-        ui.mediafileComboBox->addItem(item);
-    }
-    ui.mediafileComboBox->setCurrentIndex(j);
 }
 
 void StreamMediaFileDlg::slotClearHistory()
 {
-    QVector<QString> files;
-    for (int i=0;i<ui.mediafileComboBox->count();i++)
+    QMessageBox answer;
+    answer.setText(tr("Are you sure you want to clear stream history?"));
+    QAbstractButton *YesButton = answer.addButton(tr("&Yes"), QMessageBox::YesRole);
+    QAbstractButton *NoButton = answer.addButton(tr("&No"), QMessageBox::NoRole);
+    Q_UNUSED(NoButton);
+    answer.setIcon(QMessageBox::Question);
+    answer.setWindowTitle(tr("Clear history"));
+    answer.exec();
+    if(answer.clickedButton() == YesButton)
     {
-        files.push_back(ui.mediafileComboBox->itemText(i));
+        for (int i = 0; i<ui.mediafileComboBox->count(); i++)
+        {
+            ttSettings->remove(QString(SETTINGS_STREAMMEDIA_FILENAME).arg(i));
+        }
+        ui.mediafileComboBox->clear();
     }
-    for (int i = 0; i < files.size(); i++)
-    {
-        ttSettings->remove(QString(SETTINGS_STREAMMEDIA_FILENAME).arg(i));
-    }
-    ui.mediafileComboBox->clear();
 }
 
 void StreamMediaFileDlg::slotSelectionFile(const QString&)
