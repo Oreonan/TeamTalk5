@@ -3785,7 +3785,7 @@ void MainWindow::slotMeChangeNickname(bool /*checked =false */)
     inputDialog.setOkButtonText(tr("&Ok"));
     inputDialog.setCancelButtonText(tr("&Cancel"));
     inputDialog.setInputMode(QInputDialog::TextInput);
-    inputDialog.setTextValue(_W(nick));
+    inputDialog.setTextValue(nick);
     inputDialog.setWindowTitle(MENUTEXT(ui.actionChangeNickname->text()));
     inputDialog.setLabelText(tr("Specify new nickname"));
     ok = inputDialog.exec();
