@@ -6,6 +6,7 @@ Accessible Windows Client
 -
 Default QT Client
 -CTRL+G now speak informations on selected user/channel (press CTRL+Alt+G to hear informations on current channel)
+-Ability to delete items from CTRL+S history
 Android Client
 -
 iOS Client
