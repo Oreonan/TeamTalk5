@@ -8,6 +8,7 @@ Default QT Client
 -CTRL+G now speak informations on selected user/channel (press CTRL+Alt+G to hear informations on current channel)
 -Ability to delete items from CTRL+S history
 -New option to configure what events to display in chat history
+-Ability to specify nickname by server
 Android Client
 -
 iOS Client
