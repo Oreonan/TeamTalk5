@@ -373,6 +373,7 @@ enum SoundsPack
 {
     SOUNDPACK_DEFAULT          = 0,
     SOUNDPACK_OLD              = 1,
+    SOUNDPACK_MG               = 2,
 };
 
 enum HotKeyID
