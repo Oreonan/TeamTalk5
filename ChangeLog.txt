@@ -9,6 +9,8 @@ Default QT Client
 -Ability to delete items from CTRL+S history
 -New option to configure what events to display in chat history
 -Ability to specify nickname by server
+-New option to choose bitween some sounds packs
+-Fix default values for "Transmit ready in "No interruption" channel" and "Transmit stopped in "No interruption" channel" sound events
 Android Client
 -
 iOS Client

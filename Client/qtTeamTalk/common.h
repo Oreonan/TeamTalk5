@@ -369,6 +369,12 @@ enum StatusBarEvent : qulonglong
 
 typedef qulonglong StatusBarEvents;
 
+enum SoundsPack
+{
+    SOUNDPACK_DEFAULT          = 0,
+    SOUNDPACK_OLD              = 1,
+};
+
 enum HotKeyID
 {
     HOTKEY_PUSHTOTALK,
