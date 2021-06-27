@@ -1887,12 +1887,6 @@ void PreferencesDlg::slotUpdateASBAccessibleName()
     ui.awaySpinBox->setAccessibleName(QString("%1 %2 %3").arg(ui.label_2->text()).arg(ui.awaySpinBox->value()).arg(ui.label_3->text()));
 }
 
-void PreferencesDlg::slotConfigureStatusBar()
-{
-    StatusBarDlg dlg(this, ttSettings->value(SETTINGS_STATUSBAR_ACTIVEEVENTS, SETTINGS_STATUSBAR_ACTIVEEVENTS_DEFAULT).toULongLong());
-    dlg.exec();
-}
-
 void PreferencesDlg::slotSPackChange()
 {
     ui.newuserEdit->setText(ttSettings->value(SETTINGS_SOUNDEVENT_NEWUSER_DEFAULT, SETTINGS_SOUNDEVENT_NEWUSER_DEFAULT).toString());
@@ -1977,4 +1971,10 @@ void PreferencesDlg::slotSPackChange()
         if(filename == "vox_me_disable")
            ui.voiceactmeoffEdit->setText(QString("%1/%2/%3.wav").arg(SOUNDSPATH).arg(ui.spackBox->currentText()).arg(filename));
     }
+}
+
+void PreferencesDlg::slotConfigureStatusBar()
+{
+    StatusBarDlg dlg(this, ttSettings->value(SETTINGS_STATUSBAR_ACTIVEEVENTS, SETTINGS_STATUSBAR_ACTIVEEVENTS_DEFAULT).toULongLong());
+    dlg.exec();
 }
