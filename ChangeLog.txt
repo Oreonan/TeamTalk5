@@ -5,12 +5,12 @@ Version 5.8.1
 Accessible Windows Client
 -
 Default QT Client
--Ability to delete items from CTRL+S history
 -New option to configure what events to display in chat history
 - New option to choose sounds packs
  - Put a folder to sounds folder to add your own sounds pack
 - Ability to specify nickname by server
 - CTRL+G now speak informations on selected user/channel (press CTRL+Alt+G to hear informations on current channel)
+- Ability to delete items from CTRL+S history
 - Fix default values for "Transmit ready in "No interruption" channel" and "Transmit stopped in "No interruption" channel" sound events
 - Fix potentials shift+tab navigation issues in main window
 - Add missing labels in main window
