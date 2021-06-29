@@ -1070,9 +1070,13 @@ void addTextToSpeechMessage(const QString& msg)
 #endif
 #if defined(ENABLE_TOLK)
     case TTSENGINE_TOLK :
+    {
+        Tolk_PreferSAPI(ttSettings->value(SETTINGS_TTS_SAPI, SETTINGS_TTS_SAPI_DEFAULT).toBool());
         Tolk_Output(_W(msg));
         break;
+    }
 #endif
+#if defined(Q_OS_LINUX)
     case TTSENGINE_NOTIFY :
     {
         int timestamp = ttSettings->value(SETTINGS_TTS_TIMESTAMP, SETTINGS_TTS_TIMESTAMP_DEFAULT).toUInt();
@@ -1087,6 +1091,7 @@ void addTextToSpeechMessage(const QString& msg)
                          .arg(noquote));
         break;
     }
+#endif
     }
 }
 

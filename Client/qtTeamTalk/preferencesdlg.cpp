@@ -135,7 +135,6 @@ PreferencesDlg::PreferencesDlg(SoundDevice& devin, SoundDevice& devout, QWidget 
             this, &PreferencesDlg::slotSoundDefaults);
 
     //sound events
-    connect(ui.spackBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &PreferencesDlg::slotSPackChange);
     connect(ui.newuserButton, &QAbstractButton::clicked,
             this, &PreferencesDlg::slotEventNewUser);
     connect(ui.rmuserButton, &QAbstractButton::clicked,
@@ -563,20 +562,6 @@ void PreferencesDlg::slotTabChange(int index)
                                         SETTINGS_SOUND_MEDIASTREAM_VOLUME_DEFAULT).toInt());
         break;
     case SOUNDEVENTS_TAB :  //sound events
-    {
-        ui.spackBox->clear();
-        ui.spackBox->addItem(tr("Default"));
-        QDir dir( SOUNDSPATH, "", QDir::Name, QDir::AllDirs|QDir::NoSymLinks|QDir::NoDotAndDotDot);
-        QStringList aspack = dir.entryList();
-        for(int i=0;i<aspack.size();i++)
-        {
-            QString packname = aspack[i].left(aspack[i].size());
-            ui.spackBox->addItem(packname, packname);
-        }
-        QString pack = ttSettings->value(SETTINGS_SOUNDS_PACK, SETTINGS_SOUNDS_PACK_DEFAULT).toString();
-        int index = ui.spackBox->findData(pack);
-        if(index>=0)
-            ui.spackBox->setCurrentIndex(index);
         ui.newuserEdit->setText(ttSettings->value(SETTINGS_SOUNDEVENT_NEWUSER, SETTINGS_SOUNDEVENT_NEWUSER_DEFAULT).toString());
         ui.rmuserEdit->setText(ttSettings->value(SETTINGS_SOUNDEVENT_REMOVEUSER, SETTINGS_SOUNDEVENT_REMOVEUSER_DEFAULT).toString());
         ui.srvlostEdit->setText(ttSettings->value(SETTINGS_SOUNDEVENT_SERVERLOST, SETTINGS_SOUNDEVENT_SERVERLOST_DEFAULT).toString());
@@ -606,7 +591,6 @@ void PreferencesDlg::slotTabChange(int index)
         ui.voiceactmeonEdit->setText(ttSettings->value(SETTINGS_SOUNDEVENT_VOICEACTMEON, SETTINGS_SOUNDEVENT_VOICEACTMEON_DEFAULT).toString());
         ui.voiceactmeoffEdit->setText(ttSettings->value(SETTINGS_SOUNDEVENT_VOICEACTMEOFF, SETTINGS_SOUNDEVENT_VOICEACTMEOFF_DEFAULT).toString());
         break;
-    }
     case TTSEVENTS_TAB :
     {
         TTSEvents events = ttSettings->value(SETTINGS_TTS_ACTIVEEVENTS, SETTINGS_TTS_ACTIVEEVENTS_DEFAULT).toULongLong();
@@ -951,7 +935,6 @@ void PreferencesDlg::slotSaveChanges()
     }
     if(m_modtab.find(SOUNDEVENTS_TAB) != m_modtab.end())
     {
-        ttSettings->setValue(SETTINGS_SOUNDS_PACK, ui.spackBox->currentText());
         ttSettings->setValue(SETTINGS_SOUNDEVENT_NEWUSER, ui.newuserEdit->text());
         ttSettings->setValue(SETTINGS_SOUNDEVENT_REMOVEUSER, ui.rmuserEdit->text());
         ttSettings->setValue(SETTINGS_SOUNDEVENT_SERVERLOST, ui.srvlostEdit->text());
@@ -1071,7 +1054,11 @@ void PreferencesDlg::slotSaveChanges()
         ttSettings->setValue(SETTINGS_TTS_VOICE, ui.ttsVoiceComboBox->currentIndex());
         ttSettings->setValue(SETTINGS_TTS_RATE, ui.voiceRateSpinBox->value());
         ttSettings->setValue(SETTINGS_TTS_VOLUME, ui.voiceVolumeSpinBox->value());
+#if defined(Q_OS_LINUX)
         ttSettings->setValue(SETTINGS_TTS_TIMESTAMP, ui.notifTimestampSpinBox->value());
+#elif defined(Q_OS_WIN)
+        ttSettings->setValue(SETTINGS_TTS_SAPI, ui.forceSapiChkBox->isChecked());
+#endif
     }
 }
 
@@ -1524,6 +1511,7 @@ void PreferencesDlg::slotUpdateTTSTab()
         }
         ui.ttsVoiceComboBox->setCurrentIndex(ttSettings->value(SETTINGS_TTS_VOICE).toInt());
         ui.notifTimestampSpinBox->setEnabled(false);
+        ui.forceSapiChkBox->setEnabled(false);
     }
 #if defined(Q_OS_LINUX)
     else if(ui.ttsengineComboBox->currentIndex() == 2)
@@ -1534,6 +1522,20 @@ void PreferencesDlg::slotUpdateTTSTab()
         ui.notifTimestampSpinBox->setEnabled(true);
         ui.notifTimestampSpinBox->setValue(ttSettings->value(SETTINGS_TTS_TIMESTAMP, SETTINGS_TTS_TIMESTAMP_DEFAULT).toUInt());
     }
+#elif defined(Q_OS_WINDOWS)
+    else if(ui.ttsengineComboBox->currentIndex() == 2)
+    {
+        ui.forceSapiChkBox->setEnabled(true);
+        bool tolkLoaded = Tolk_IsLoaded();
+        if (!tolkLoaded)
+            Tolk_Load();
+        QString currentSR = QString(tr("%1").arg(Tolk_DetectScreenReader()));
+        if (!tolkLoaded)
+            Tolk_Unload();
+        if(currentSR.size())
+            ui.label_forceSapi->setText(tr("Use SAPI instead of %1 screenreader").arg(currentSR));
+        ui.forceSapiChkBox->setChecked(ttSettings->value(SETTINGS_TTS_SAPI, SETTINGS_TTS_SAPI_DEFAULT).toBool());
+    }
 #endif
     else
     {
@@ -1541,6 +1543,7 @@ void PreferencesDlg::slotUpdateTTSTab()
         ui.voiceRateSpinBox->setEnabled(false);
         ui.voiceVolumeSpinBox->setEnabled(false);
         ui.notifTimestampSpinBox->setEnabled(false);
+        ui.forceSapiChkBox->setEnabled(false);
     }
 }
 
