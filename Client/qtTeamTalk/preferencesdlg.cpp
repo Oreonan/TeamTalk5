@@ -135,6 +135,7 @@ PreferencesDlg::PreferencesDlg(SoundDevice& devin, SoundDevice& devout, QWidget 
             this, &PreferencesDlg::slotSoundDefaults);
 
     //sound events
+    connect(ui.spackBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &PreferencesDlg::slotSPackChange);
     connect(ui.newuserButton, &QAbstractButton::clicked,
             this, &PreferencesDlg::slotEventNewUser);
     connect(ui.rmuserButton, &QAbstractButton::clicked,
@@ -562,6 +563,20 @@ void PreferencesDlg::slotTabChange(int index)
                                         SETTINGS_SOUND_MEDIASTREAM_VOLUME_DEFAULT).toInt());
         break;
     case SOUNDEVENTS_TAB :  //sound events
+    {
+        ui.spackBox->clear();
+        ui.spackBox->addItem(tr("Default"));
+        QDir dir( SOUNDSPATH, "", QDir::Name, QDir::AllDirs|QDir::NoSymLinks|QDir::NoDotAndDotDot);
+        QStringList aspack = dir.entryList();
+        for(int i=0;i<aspack.size();i++)
+        {
+            QString packname = aspack[i].left(aspack[i].size());
+            ui.spackBox->addItem(packname, packname);
+        }
+        QString pack = ttSettings->value(SETTINGS_SOUNDS_PACK, SETTINGS_SOUNDS_PACK_DEFAULT).toString();
+        int index = ui.spackBox->findData(pack);
+        if(index>=0)
+            ui.spackBox->setCurrentIndex(index);
         ui.newuserEdit->setText(ttSettings->value(SETTINGS_SOUNDEVENT_NEWUSER, SETTINGS_SOUNDEVENT_NEWUSER_DEFAULT).toString());
         ui.rmuserEdit->setText(ttSettings->value(SETTINGS_SOUNDEVENT_REMOVEUSER, SETTINGS_SOUNDEVENT_REMOVEUSER_DEFAULT).toString());
         ui.srvlostEdit->setText(ttSettings->value(SETTINGS_SOUNDEVENT_SERVERLOST, SETTINGS_SOUNDEVENT_SERVERLOST_DEFAULT).toString());
@@ -591,6 +606,7 @@ void PreferencesDlg::slotTabChange(int index)
         ui.voiceactmeonEdit->setText(ttSettings->value(SETTINGS_SOUNDEVENT_VOICEACTMEON, SETTINGS_SOUNDEVENT_VOICEACTMEON_DEFAULT).toString());
         ui.voiceactmeoffEdit->setText(ttSettings->value(SETTINGS_SOUNDEVENT_VOICEACTMEOFF, SETTINGS_SOUNDEVENT_VOICEACTMEOFF_DEFAULT).toString());
         break;
+    }
     case TTSEVENTS_TAB :
     {
         TTSEvents events = ttSettings->value(SETTINGS_TTS_ACTIVEEVENTS, SETTINGS_TTS_ACTIVEEVENTS_DEFAULT).toULongLong();
@@ -935,6 +951,7 @@ void PreferencesDlg::slotSaveChanges()
     }
     if(m_modtab.find(SOUNDEVENTS_TAB) != m_modtab.end())
     {
+        ttSettings->setValue(SETTINGS_SOUNDS_PACK, ui.spackBox->currentText());
         ttSettings->setValue(SETTINGS_SOUNDEVENT_NEWUSER, ui.newuserEdit->text());
         ttSettings->setValue(SETTINGS_SOUNDEVENT_REMOVEUSER, ui.rmuserEdit->text());
         ttSettings->setValue(SETTINGS_SOUNDEVENT_SERVERLOST, ui.srvlostEdit->text());
@@ -1529,7 +1546,7 @@ void PreferencesDlg::slotUpdateTTSTab()
         bool tolkLoaded = Tolk_IsLoaded();
         if (!tolkLoaded)
             Tolk_Load();
-        QString currentSR = QString(tr("%1").arg(Tolk_DetectScreenReader()));
+        QString currentSR = QString("%1").arg(Tolk_DetectScreenReader());
         if (!tolkLoaded)
             Tolk_Unload();
         if(currentSR.size())

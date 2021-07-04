@@ -990,6 +990,35 @@ TEST_CASE("BuildAudioFrame")
     REQUIRE(remainsamples == 77000 % 1554);
 }
 
+TEST_CASE("GenerateToneStereoWaveFile")
+{
+    media::AudioFormat fmt(32000, 2);
+    std::vector<short> buf(fmt.samplerate * fmt.channels);
+    media::AudioFrame frm(fmt, &buf[0], 32000);
+    WavePCMFile wavfile;
+    REQUIRE(wavfile.NewFile(ACE_TEXT("stereo.wav"), fmt));
+    for (int i=0;i<5;++i)
+    {
+        frm.sample_no = GenerateTone(frm, frm.sample_no, 500, 8000, false, true);
+        REQUIRE(wavfile.AppendSamples(frm.input_buffer, frm.input_samples));
+        frm.sample_no = GenerateTone(frm, frm.sample_no, 500, 8000, true, false);
+        REQUIRE(wavfile.AppendSamples(frm.input_buffer, frm.input_samples));
+    }
+    wavfile.Close();
+    REQUIRE(wavfile.OpenFile(ACE_TEXT("stereo.wav"), true));
+    for (int i=0;i<5;++i)
+    {
+        REQUIRE(wavfile.ReadSamples(frm.input_buffer, frm.input_samples) == frm.input_samples);
+        for (int j=0;j<frm.input_samples;j+=2)
+        {
+            if (i % 2 == 0)
+                REQUIRE(frm.input_buffer[j+1] == 0);
+            else
+                REQUIRE(frm.input_buffer[j] == 0);
+        }
+    }
+}
+
 TEST_CASE( "AudioMuxerRawDifferentStreamTypeDifferentAudioFormat" )
 {
     media::AudioInputFormat inputfmt(media::AudioFormat(12000, 1), int(12000 * .01));
@@ -3384,38 +3413,49 @@ TEST_CASE("LocalPlaybackOnOffPause")
     REQUIRE(Login(ttclient, ACE_TEXT("TTClient")));
     REQUIRE(JoinRoot(ttclient));
 
-    Channel chan;
-    REQUIRE(TT_GetChannel(ttclient, TT_GetRootChannelID(ttclient), &chan));
-
-    REQUIRE(TT_StartRecordingMuxedStreams(ttclient, STREAMTYPE_LOCALMEDIAPLAYBACK_AUDIO,
-                                          &chan.audiocodec, ACE_TEXT("onoffmixed.wav"), AFF_WAVE_FORMAT));
-
     TTMessage msg;
-    // Call TT_InitLocalPlayback for file 1, PAUSE=FALSE
     MediaFilePlayback mfp = {};
-    mfp.bPaused = false;
     mfp.uOffsetMSec = TT_MEDIAPLAYBACK_OFFSET_IGNORE;
-    int i = 10;
+    
+    // cache both sounds for initial playback
+    mfp.bPaused = true;
+    int onid = TT_InitLocalPlayback(ttclient, ACE_TEXT("testdata/Opus/on.ogg"), &mfp);
+    REQUIRE(onid > 0);
+
+    int offid = TT_InitLocalPlayback(ttclient, ACE_TEXT("testdata/Opus/off.ogg"), &mfp);
+    REQUIRE(offid > 0);
+
+    int i = 20;
     while (i--)
     {
-        int onid = TT_InitLocalPlayback(ttclient, ACE_TEXT("testdata/Opus/on.ogg"), &mfp);
-        REQUIRE(onid > 0);
+        // Play cached on.ogg
+        mfp.bPaused = false;
+        REQUIRE(TT_UpdateLocalPlayback(ttclient, onid, &mfp));
 
         while (WaitForEvent(ttclient, CLIENTEVENT_LOCAL_MEDIAFILE, msg) && msg.mediafileinfo.nStatus != MFS_FINISHED);
         REQUIRE(msg.nSource == onid);
 
+        // cache on.ogg for next playback
         mfp.bPaused = true;
-        int offid = TT_InitLocalPlayback(ttclient, ACE_TEXT("testdata/Opus/off.ogg"), &mfp);
-        REQUIRE(offid > 0);
+        onid = TT_InitLocalPlayback(ttclient, ACE_TEXT("testdata/Opus/on.ogg"), &mfp);
+        REQUIRE(onid > 0);
 
+        WaitForEvent(ttclient, CLIENTEVENT_NONE, msg, 1000);
+
+        // Play cached off.ogg
         mfp.bPaused = false;
         REQUIRE(TT_UpdateLocalPlayback(ttclient, offid, &mfp));
 
         while (WaitForEvent(ttclient, CLIENTEVENT_LOCAL_MEDIAFILE, msg) && msg.mediafileinfo.nStatus != MFS_FINISHED);
         REQUIRE(msg.nSource == offid);
-    }
 
-    REQUIRE(TT_StopRecordingMuxedAudioFile(ttclient));
+        // cache off.ogg for next playback
+        mfp.bPaused = true;
+        offid = TT_InitLocalPlayback(ttclient, ACE_TEXT("testdata/Opus/off.ogg"), &mfp);
+        REQUIRE(offid > 0);
+
+        WaitForEvent(ttclient, CLIENTEVENT_NONE, msg, 1000);
+    }
 }
 
 
