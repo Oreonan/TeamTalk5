@@ -15,7 +15,7 @@ HEADERS    = mainwindow.h preferencesdlg.h uservideowidget.h \
              desktopaccessdlg.h appinfo.h settings.h generatettfiledlg.h \
              customvideofmtdlg.h license.h bearwarelogindlg.h \
              audiopreprocessordlg.h ttseventsmodel.h \
-             statusbardlg.h statusbareventsmodel.h
+             statusbardlg.h statusbareventsmodel.h soundeventsmodel.h
 
 SOURCES    = main.cpp mainwindow.cpp preferencesdlg.cpp uservideowidget.cpp \
              channelstree.cpp channeldlg.cpp userinfodlg.cpp \
@@ -31,7 +31,7 @@ SOURCES    = main.cpp mainwindow.cpp preferencesdlg.cpp uservideowidget.cpp \
              streammediafiledlg.cpp videotextdlg.cpp desktopaccessdlg.cpp \
              generatettfiledlg.cpp customvideofmtdlg.cpp \
              bearwarelogindlg.cpp audiopreprocessordlg.cpp ttseventsmodel.cpp \
-             statusbardlg.cpp statusbareventsmodel.cpp
+             statusbardlg.cpp statusbareventsmodel.cpp soundeventsmodel.cpp
 
 FORMS      = mainwindow.ui channel.ui preferences.ui \
              serverlist.ui userinfo.ui bannedusers.ui useraccounts.ui \
@@ -40,7 +40,7 @@ FORMS      = mainwindow.ui channel.ui preferences.ui \
              serverstats.ui onlineusers.ui mediastorage.ui userdesktop.ui \
              desktopshare.ui streammediafile.ui videotext.ui desktopaccess.ui \
              generatettfile.ui customvideofmt.ui bearwarelogindlg.ui \
-             audiopreprocessor.ui statusbardlg.ui
+             audiopreprocessor.ui statusbardlg.ui soundeventsmodel.ui
 
 RESOURCES += resources.qrc
 

@@ -45,11 +45,11 @@ public:
     enum
     {
         GENERAL_TAB,
-        DISPLAY_TAB,
+        USERINTERFACE_TAB,
+        BEHAVIOR_TAB,
         CONNECTION_TAB,
-        SOUND_TAB,
-        SOUNDEVENTS_TAB,
-        TTSEVENTS_TAB,
+        AUDIO_TAB,
+        ACCESSIBILITY_TAB,
         SHORTCUTS_TAB,
         VIDCAP_TAB
     };
@@ -64,8 +64,6 @@ private:
     SoundSystem getSoundSystem();
     void showDevices(SoundSystem snd);
     QVector<SoundDevice> m_sounddevices;
-    /* sound events */
-    bool getSoundFile(QString& filename);
     typedef QMap<HotKeyID, hotkey_t> hotkeys_t;
     hotkeys_t m_hotkeys;
     /* video tab */
@@ -92,6 +90,7 @@ private:
     void slotLanguageChange(int index);
     void slotSelectVideoText();
     void slotConfigureStatusBar();
+    void slotConfigSndEvents();
     void slotUpdateUpdDlgChkBox(bool checked);
     //connection tab
     void slotDesktopAccess();
@@ -103,35 +102,6 @@ private:
     void slotSoundTestDevices(bool checked);
     void slotSoundDefaults();
     void slotUpdateSoundCheckBoxes();
-    //sound events
-    void slotEventNewUser();
-    void slotEventRemoveUser();
-    void slotEventServerLost();
-    void slotEventUserTextMsg();
-    void slotEventSentTextMsg();
-    void slotEventChannelTextMsg();
-    void slotEventSentChannelMsg();
-    void slotEventBroadcastTextMsg();
-    void slotEventHotKey();
-    void slotEventSilence();
-    void slotEventNewVideo();
-    void slotEventNewDesktop();
-    void slotEventFilesUpdated();
-    void slotEventFileTxDone();
-    void slotEventQuestionMode();
-    void slotEventDesktopAccess();
-    void slotEventUserLoggedIn();
-    void slotEventUserLoggedOut();
-    void slotEventVoiceActOn();
-    void slotEventVoiceActOff();
-    void slotEventMuteAllOn();
-    void slotEventMuteAllOff();
-    void slotEventTransmitQueueHead();
-    void slotEventTransmitQueueStop();
-    void slotEventVoiceActTrig();
-    void slotEventVoiceActStop();
-    void slotEventVoiceActMeOn();
-    void slotEventVoiceActMeOff();
     //TTS
     void slotUpdateTTSTab();
     //keyboard shortcuts
@@ -155,7 +125,6 @@ private:
     void slotTTSClearAll(bool checked);
     void slotTTSRevert(bool checked);
     void slotUpdateASBAccessibleName();
-    void slotSPackChange();
 
 public:
     void slotNewVideoFrame(int userid, int stream_id);
