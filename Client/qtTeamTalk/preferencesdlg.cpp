@@ -434,10 +434,6 @@ void PreferencesDlg::slotTabChange(int index)
         ui.lasttalkChkBox->setChecked(ttSettings->value(SETTINGS_DISPLAY_LASTTALK, 
                                                         SETTINGS_DISPLAY_LASTTALK_DEFAULT).toBool());
         ui.logstatusbarChkBox->setChecked(ttSettings->value(SETTINGS_DISPLAY_LOGSTATUSBAR, true).toBool());
-        ui.updatesChkBox->setChecked(ttSettings->value(SETTINGS_DISPLAY_APPUPDATE, true).toBool());
-        ui.updatesDlgChkBox->setEnabled(ui.updatesChkBox->isChecked());
-        ui.updatesDlgChkBox->setChecked(ttSettings->value(SETTINGS_DISPLAY_APPUPDATE_DLG,
-                                                     SETTINGS_DISPLAY_APPUPDATE_DLG_DEFAULT).toBool());
         ui.maxtextSpinBox->setValue(ttSettings->value(SETTINGS_DISPLAY_MAX_STRING,
                                                       SETTINGS_DISPLAY_MAX_STRING_DEFAULT).toInt());
         ui.showusernameChkBox->setChecked(ttSettings->value(SETTINGS_DISPLAY_SHOWUSERNAME,
@@ -470,6 +466,11 @@ void PreferencesDlg::slotTabChange(int index)
                                                          SETTINGS_DISPLAY_VIDEORETURNTOGRID_DEFAULT).toBool());
         ui.desktopdlgChkBox->setChecked(ttSettings->value(SETTINGS_DISPLAY_DESKTOPPOPUP, false).toBool());
         ui.msgtimestampChkBox->setChecked(ttSettings->value(SETTINGS_DISPLAY_MSGTIMESTAMP, false).toBool());
+        ui.chanexpChkBox->setChecked(ttSettings->value(SETTINGS_DISPLAY_CHANEXP, SETTINGS_DISPLAY_CHANEXP_DEFAULT).toBool());
+        ui.updatesChkBox->setChecked(ttSettings->value(SETTINGS_DISPLAY_APPUPDATE, true).toBool());
+        ui.updatesDlgChkBox->setEnabled(ui.updatesChkBox->isChecked());
+        ui.updatesDlgChkBox->setChecked(ttSettings->value(SETTINGS_DISPLAY_APPUPDATE_DLG,
+                                                     SETTINGS_DISPLAY_APPUPDATE_DLG_DEFAULT).toBool());
     }
     break;
     case CONNECTION_TAB :  //connection
@@ -666,8 +667,6 @@ void PreferencesDlg::slotSaveChanges()
         ttSettings->setValue(SETTINGS_DISPLAY_USERSCOUNT, ui.usercountChkBox->isChecked());
         ttSettings->setValue(SETTINGS_DISPLAY_LASTTALK, ui.lasttalkChkBox->isChecked());
         ttSettings->setValue(SETTINGS_DISPLAY_LOGSTATUSBAR, ui.logstatusbarChkBox->isChecked());
-        ttSettings->setValue(SETTINGS_DISPLAY_APPUPDATE, ui.updatesChkBox->isChecked());
-        ttSettings->setValue(SETTINGS_DISPLAY_APPUPDATE_DLG, ui.updatesDlgChkBox->isChecked());
         ttSettings->setValue(SETTINGS_DISPLAY_MAX_STRING, ui.maxtextSpinBox->value());
         ttSettings->setValue(SETTINGS_DISPLAY_SHOWUSERNAME, ui.showusernameChkBox->isChecked());
         ttSettings->setValue(SETTINGS_DISPLAY_EMOJI, ui.emojiChkBox->isChecked());
@@ -705,6 +704,9 @@ void PreferencesDlg::slotSaveChanges()
         ttSettings->setValue(SETTINGS_DISPLAY_VIDEORETURNTOGRID, ui.returnvidChkBox->isChecked());
         ttSettings->setValue(SETTINGS_DISPLAY_DESKTOPPOPUP, ui.desktopdlgChkBox->isChecked());
         ttSettings->setValue(SETTINGS_DISPLAY_MSGTIMESTAMP, ui.msgtimestampChkBox->isChecked());
+        ttSettings->setValue(SETTINGS_DISPLAY_CHANEXP, ui.chanexpChkBox->isChecked());
+        ttSettings->setValue(SETTINGS_DISPLAY_APPUPDATE, ui.updatesChkBox->isChecked());
+        ttSettings->setValue(SETTINGS_DISPLAY_APPUPDATE_DLG, ui.updatesDlgChkBox->isChecked());
     }
     if(m_modtab.find(CONNECTION_TAB) != m_modtab.end())
     {
