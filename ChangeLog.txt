@@ -18,7 +18,8 @@ Default QT Client
 - Fixed Shift+Tab navigation issues in main window
 - Fixed missing accessible labels in main window
 Android Client
--
+- Option to disable sound when sending a channel message
+- Option to disable TTS when sending a channel message
 iOS Client
 -
 Server
