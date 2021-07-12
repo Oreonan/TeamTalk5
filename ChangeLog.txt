@@ -20,6 +20,7 @@ Default QT Client
 Android Client
 - Option to disable sound when sending a channel message
 - Option to disable TTS when sending a channel message
+- Files update sound played only in appropriate channel
 iOS Client
 -
 Server
